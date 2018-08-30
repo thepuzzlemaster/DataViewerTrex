@@ -6,7 +6,8 @@ import LoadingIndicatorComponent from './LoadingIndicatorComponent';
 import DatasourceListComponent from './DatasourceListComponent';
 
 require('normalize.css/normalize.css');
-require('styles/App.css');
+require('styles/App.scss');
+require('styles/Datagrid.scss');
 
 // Declare this so our linter knows that tableau is a global object
 /* global tableau */

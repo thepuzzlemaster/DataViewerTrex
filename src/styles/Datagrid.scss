@@ -1,0 +1,55 @@
+@import "variables";
+
+.tb-react-data-grid {
+    position: absolute;
+    top: $summaryHeight;
+    right: 0;
+    bottom: 0;
+    left: 0;
+
+    /** Give the data grid its own stacking context to prevent the column resize handles from
+    // interfering with the rest of the page (e.g. appearing in front of popup menus residing outside
+    // the grid). Isolating the stacking context is okay because the data grid has "overflow hidden"
+    // anyway – popups originating inside the data grid already can't extend beyond its boundaries. **/
+    z-index: 0;
+  }
+
+  .tb-react-dg-hcell {
+    line-height: 37px;
+    font-size: 22px;
+    color: grey
+  }
+
+  .tb-react-dg-hcell-sortable {
+    cursor: pointer
+  }
+
+  .tb-react-dg-body {
+    background-color: white;
+  }
+
+  /* mimic the RowBandingStylist as CSS so there's a sense of motion even if rows haven't paged in */
+  /* .tb-react-dg-body > * {
+    background: repeating-linear-gradient(
+      0deg,
+      white,
+      white 38px,
+      #f5f5f5 38px,
+      #f5f5f5 76px
+    ) scroll;
+  } */
+
+  .tb-react-dg-bcell {
+    padding-left: 12px;
+    padding-right: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  [role="columnheader"]:focus,
+  [role="gridcell"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px #3498db inset;
+  }
