@@ -2,11 +2,8 @@ import React from 'react';
 import { Button, Glyphicon, Modal } from 'react-bootstrap';
 import { DataGrid } from '@tableau/widgets-datagrid';
 
-import { ExampleDataGenerator } from './ExampleDataGenerator';
 import LoadingIndicatorComponent from './LoadingIndicatorComponent';
 import DatasourceListComponent from './DatasourceListComponent';
-
-const dataGenerator = new ExampleDataGenerator(50, 50);
 
 require('normalize.css/normalize.css');
 require('styles/App.css');
@@ -29,6 +26,14 @@ class AppComponent extends React.Component {
     this.unregisterEventFn = undefined;
     this.dataSourceFetchPromises = [];
     this.dashboardDataSources = {};
+  }
+
+  getRowStore = () => {
+    return {
+      getItems: (start, end, rowHandler) => {
+        rowHandler(this.state.rows);
+      }
+    }
   }
 
   componentWillMount = () => {
@@ -62,7 +67,7 @@ class AppComponent extends React.Component {
         });
 
         if (datasourceSelected) {
-          // this.loadSelectedData();
+          this.loadSelectedData();
         }
       });
     });
@@ -88,8 +93,8 @@ class AppComponent extends React.Component {
 
     const datasource = this.dashboardDataSources[this.state.selectedDatasource];
     datasource.getUnderlyingDataAsync().then(returnedData => {
+      console.log('loadSelectedData', returnedData);
 
-      const rows = returnedData.data.map(row => row.map(cell => cell.formattedValue));
       const headers = returnedData.columns.map(column => {
         return {
           headerText: column.fieldName,
@@ -98,12 +103,29 @@ class AppComponent extends React.Component {
         }
       });
 
+      const rows = returnedData.data.map((row, rowIndex) => {
+        let mappedRow = {
+          data: {},
+          key: rowIndex
+        };
+
+        row.forEach((cell, cellIndex) => {
+          let fieldName = (headers[cellIndex] && headers[cellIndex].headerText) || '';
+          let value = cell.formattedValue;
+          mappedRow.data[fieldName] = value;
+        });
+        return mappedRow
+      });
+
+
       this.setState({
         rows: rows,
         headers: headers,
         dataKey: Date.now(),
         isLoading: false
       })
+
+      console.log(rows, 'rows in loadSelectData()');
 
       this.forceUpdate()
     })
@@ -157,9 +179,8 @@ class AppComponent extends React.Component {
     }
 
     const props = {
-      cols: dataGenerator.cols,
-      // cols: this.state.headers,
-      rowStore: dataGenerator.getRowStore(),
+      cols: this.state.headers,
+      rowStore: this.getRowStore(),
       showHeaders: true,
       showRowBanding: true,
       showRowHeaders: true,
