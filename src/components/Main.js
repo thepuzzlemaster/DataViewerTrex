@@ -1,9 +1,10 @@
 import React from 'react';
 import { Button, Glyphicon, Modal } from 'react-bootstrap';
-import { DataGrid } from '@tableau/widgets-datagrid';
+import { DataGrid, IndexBasedGridSelection, SelectionBehavior } from '@tableau/widgets-datagrid';
 
 import LoadingIndicatorComponent from './LoadingIndicatorComponent';
 import DatasourceListComponent from './DatasourceListComponent';
+import { CellFormatterFactory } from './CellFormatter';
 
 require('normalize.css/normalize.css');
 require('styles/App.scss');
@@ -13,6 +14,8 @@ require('styles/Datagrid.scss');
 /* global tableau */
 
 class AppComponent extends React.Component {
+  selection;
+
   constructor (props) {
     super(props);
     this.state = {
@@ -94,13 +97,13 @@ class AppComponent extends React.Component {
 
     const datasource = this.dashboardDataSources[this.state.selectedDatasource];
     datasource.getUnderlyingDataAsync().then(returnedData => {
-      console.log('loadSelectedData', returnedData);
 
       const headers = returnedData.columns.map(column => {
         return {
           headerText: column.fieldName,
           dataKey: column.fieldName,
-          name: column.fieldName
+          name: column.fieldName,
+          cellFormatter: CellFormatterFactory
         }
       });
 
@@ -118,7 +121,6 @@ class AppComponent extends React.Component {
         return mappedRow
       });
 
-
       this.setState({
         rows: rows,
         headers: headers,
@@ -126,7 +128,10 @@ class AppComponent extends React.Component {
         isLoading: false
       })
 
-      console.log(rows, 'rows in loadSelectData()');
+      this.selection = new IndexBasedGridSelection(this.state.rows.length, this.state.headers.length);
+      this.selection.SelectionBehavior = SelectionBehavior.SelectCell;
+
+      console.log('this.selection set', this.selection);
 
       this.forceUpdate()
     })
@@ -135,6 +140,11 @@ class AppComponent extends React.Component {
     //   this.setState({ isLoading: true });
     //   this.loadSelectedData();
     // });
+  }
+
+  handleSelectionEvent = (event) => {
+    const result = this.selection && this.selection.handleSelectionEvent(event);
+    return result;
   }
 
   onHeaderClicked (fieldName) {
@@ -182,6 +192,8 @@ class AppComponent extends React.Component {
     const props = {
       cols: this.state.headers,
       rowStore: this.getRowStore(),
+      onSelectionEvent: this.handleSelectionEvent,
+      selectionModel: this.selection,
       showHeaders: true,
       showRowBanding: true,
       showRowHeaders: true,
