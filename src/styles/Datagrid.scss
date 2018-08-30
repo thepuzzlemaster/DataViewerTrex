@@ -7,6 +7,11 @@
     bottom: 0;
     left: 0;
 
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+
     /** Give the data grid its own stacking context to prevent the column resize handles from
     // interfering with the rest of the page (e.g. appearing in front of popup menus residing outside
     // the grid). Isolating the stacking context is okay because the data grid has "overflow hidden"
