@@ -5,8 +5,8 @@ This folder contains a version of our finalized tutorial written in React instea
 ## Setup
 
 - Navigate to this folder in a command prompt
+- Pull in the widgets-datagrid component (follow [these](https://mytableau.tableaucorp.com/pages/viewpage.action?pageId=124126122) steps)
 - run `npm install`
-- Copy `TutorialReact.trex` file to `~/My Tableau Repository (Beta)/Extensions`
 - run `npm start` to start the web server and compile the code (automatic updates are enabled)
 - Add the extension to your dashboard
 

@@ -1,9 +1,12 @@
 import React from 'react';
 import { Button, Glyphicon, Modal } from 'react-bootstrap';
+import { DataGrid } from '@tableau/widgets-datagrid';
 
-import DataTableComponent from './DataTableComponent';
+import { ExampleDataGenerator } from './ExampleDataGenerator';
 import LoadingIndicatorComponent from './LoadingIndicatorComponent';
 import DatasourceListComponent from './DatasourceListComponent';
+
+const dataGenerator = new ExampleDataGenerator(50, 50);
 
 require('normalize.css/normalize.css');
 require('styles/App.css');
@@ -28,7 +31,7 @@ class AppComponent extends React.Component {
     this.dashboardDataSources = {};
   }
 
-  componentWillMount () {
+  componentWillMount = () => {
     tableau.extensions.initializeAsync().then(() => {
       const selectedDatasource = tableau.extensions.settings.get('datasource');
       const dashboard = tableau.extensions.dashboardContent.dashboard;
@@ -57,6 +60,10 @@ class AppComponent extends React.Component {
           isLoading: false,
           datasourceNames: dataSourceNames
         });
+
+        if (datasourceSelected) {
+          // this.loadSelectedData();
+        }
       });
     });
   }
@@ -66,11 +73,11 @@ class AppComponent extends React.Component {
     return tableau.extensions.dashboardContent.dashboard.worksheets.find(worksheet => worksheet.name === sheetName);
   }
 
-  onSelectDatasource (datasourceName) {
+  onSelectDatasource = (datasourceName) => {
     tableau.extensions.settings.set('datasource', datasourceName);
     this.setState({ isLoading: true });
     tableau.extensions.settings.saveAsync().then(() => {
-      this.setState({ selectedDatasource: datasourceName, filteredFields: [] }, this.loadSelectedData.bind(this));
+      this.setState({ selectedDatasource: datasourceName, filteredFields: [] }, this.loadSelectedData);
     });
   }
 
@@ -82,9 +89,14 @@ class AppComponent extends React.Component {
     const datasource = this.dashboardDataSources[this.state.selectedDatasource];
     datasource.getUnderlyingDataAsync().then(returnedData => {
 
-      console.log(returnedData, 'DATA')
       const rows = returnedData.data.map(row => row.map(cell => cell.formattedValue));
-      const headers = returnedData.columns.map(column => column.fieldName);
+      const headers = returnedData.columns.map(column => {
+        return {
+          headerText: column.fieldName,
+          dataKey: column.fieldName,
+          name: column.fieldName
+        }
+      });
 
       this.setState({
         rows: rows,
@@ -127,7 +139,7 @@ class AppComponent extends React.Component {
     });
   }
 
-  render () {
+  render = () => {
     if (this.state.isLoading) {
       return (<LoadingIndicatorComponent msg='Loading' />);
     }
@@ -139,13 +151,24 @@ class AppComponent extends React.Component {
             <Modal.Title>Choose a Data Source</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <DatasourceListComponent datasourceNames={this.state.datasourceNames} onSelectDatasource={this.onSelectDatasource.bind(this)} />
+            <DatasourceListComponent datasourceNames={this.state.datasourceNames} onSelectDatasource={this.onSelectDatasource} />
           </Modal.Body>
         </Modal>);
     }
 
+    const props = {
+      cols: dataGenerator.cols,
+      // cols: this.state.headers,
+      rowStore: dataGenerator.getRowStore(),
+      showHeaders: true,
+      showRowBanding: true,
+      showRowHeaders: true,
+      showVerticalGridLines: true
+    };
+
     const mainContent = this.state.rows.length > 0
-      ? (<DataTableComponent rows={this.state.rows} headers={this.state.headers} dataKey={this.state.dataKey} onHeaderClicked={this.onHeaderClicked.bind(this)} />)
+      // ? (<DataTableComponent rows={this.state.rows} headers={this.state.headers} dataKey={this.state.dataKey} onHeaderClicked={this.onHeaderClicked.bind(this)} />)
+      ? (<DataGrid.element {...props} />)
       : (<h4>No data found</h4>);
 
     return (
