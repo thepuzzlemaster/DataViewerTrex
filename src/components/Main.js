@@ -1,4 +1,5 @@
 import React from 'react';
+import { ContextMenu, MenuItem } from 'react-contextmenu';
 import { Button, Glyphicon, Modal } from 'react-bootstrap';
 import { DataGrid, IndexBasedGridSelection, SelectionBehavior } from '@tableau/widgets-datagrid';
 
@@ -8,6 +9,7 @@ import { CellFormatterFactory } from './CellFormatter';
 
 require('normalize.css/normalize.css');
 require('styles/App.scss');
+require('styles/React-contextmenu.scss');
 require('styles/Datagrid.scss');
 
 // Declare this so our linter knows that tableau is a global object
@@ -131,8 +133,6 @@ class AppComponent extends React.Component {
       this.selection = new IndexBasedGridSelection(this.state.rows.length, this.state.headers.length);
       this.selection.SelectionBehavior = SelectionBehavior.SelectCell;
 
-      console.log('this.selection set', this.selection);
-
       this.forceUpdate()
     })
 
@@ -172,6 +172,10 @@ class AppComponent extends React.Component {
     });
   }
 
+  handleCopy (event, data, target) {
+    console.log('handleCopy', event, data, target);
+  }
+
   render = () => {
     if (this.state.isLoading) {
       return (<LoadingIndicatorComponent msg='Loading' />);
@@ -189,7 +193,7 @@ class AppComponent extends React.Component {
         </Modal>);
     }
 
-    const props = {
+    const gridProps = {
       cols: this.state.headers,
       rowStore: this.getRowStore(),
       onSelectionEvent: this.handleSelectionEvent,
@@ -202,7 +206,7 @@ class AppComponent extends React.Component {
 
     const mainContent = this.state.rows.length > 0
       // ? (<DataTableComponent rows={this.state.rows} headers={this.state.headers} dataKey={this.state.dataKey} onHeaderClicked={this.onHeaderClicked.bind(this)} />)
-      ? (<DataGrid.element {...props} />)
+      ? (<DataGrid.element {...gridProps} />)
       : (<h4>No data found</h4>);
 
     return (
@@ -215,6 +219,9 @@ class AppComponent extends React.Component {
           </h4>
         </div>
         {mainContent}
+        <ContextMenu id='copyMenu'>
+          <MenuItem onClick={this.handleCopy}>Copy</MenuItem>
+        </ContextMenu>
       </div>
     );
   }
