@@ -1,17 +1,25 @@
 import React from 'react';
+import { ContextMenu, MenuItem } from 'react-contextmenu';
 import { Button, Glyphicon, Modal } from 'react-bootstrap';
+import { DataGrid, IndexBasedGridSelection, SelectionBehavior } from '@tableau/widgets-datagrid';
 
-import DataTableComponent from './DataTableComponent';
 import LoadingIndicatorComponent from './LoadingIndicatorComponent';
 import DatasourceListComponent from './DatasourceListComponent';
+import { CopySelectionToClipboard } from './SelectionCopy';
+import { CellFormatterFactory } from './CellFormatter';
+import ContextMenuTrigger from 'react-contextmenu/modules/ContextMenuTrigger';
 
 require('normalize.css/normalize.css');
-require('styles/App.css');
+require('styles/App.scss');
+require('styles/React-contextmenu.scss');
+require('styles/Datagrid.scss');
 
 // Declare this so our linter knows that tableau is a global object
 /* global tableau */
 
 class AppComponent extends React.Component {
+  selection;
+
   constructor (props) {
     super(props);
     this.state = {
@@ -28,7 +36,15 @@ class AppComponent extends React.Component {
     this.dashboardDataSources = {};
   }
 
-  componentWillMount () {
+  getRowStore = () => {
+    return {
+      getItems: (start, end, rowHandler) => {
+        rowHandler(this.state.rows);
+      }
+    }
+  }
+
+  componentWillMount = () => {
     tableau.extensions.initializeAsync().then(() => {
       const selectedDatasource = tableau.extensions.settings.get('datasource');
       const dashboard = tableau.extensions.dashboardContent.dashboard;
@@ -57,6 +73,10 @@ class AppComponent extends React.Component {
           isLoading: false,
           datasourceNames: dataSourceNames
         });
+
+        if (datasourceSelected) {
+          this.loadSelectedData();
+        }
       });
     });
   }
@@ -66,11 +86,11 @@ class AppComponent extends React.Component {
     return tableau.extensions.dashboardContent.dashboard.worksheets.find(worksheet => worksheet.name === sheetName);
   }
 
-  onSelectDatasource (datasourceName) {
+  onSelectDatasource = (datasourceName) => {
     tableau.extensions.settings.set('datasource', datasourceName);
     this.setState({ isLoading: true });
     tableau.extensions.settings.saveAsync().then(() => {
-      this.setState({ selectedDatasource: datasourceName, filteredFields: [] }, this.loadSelectedData.bind(this));
+      this.setState({ selectedDatasource: datasourceName, filteredFields: [] }, this.loadSelectedData);
     });
   }
 
@@ -82,9 +102,28 @@ class AppComponent extends React.Component {
     const datasource = this.dashboardDataSources[this.state.selectedDatasource];
     datasource.getUnderlyingDataAsync().then(returnedData => {
 
-      console.log(returnedData, 'DATA')
-      const rows = returnedData.data.map(row => row.map(cell => cell.formattedValue));
-      const headers = returnedData.columns.map(column => column.fieldName);
+      const headers = returnedData.columns.map(column => {
+        return {
+          headerText: column.fieldName,
+          dataKey: column.fieldName,
+          name: column.fieldName,
+          cellFormatter: CellFormatterFactory
+        }
+      });
+
+      const rows = returnedData.data.map((row, rowIndex) => {
+        let mappedRow = {
+          data: {},
+          key: rowIndex
+        };
+
+        row.forEach((cell, cellIndex) => {
+          let fieldName = (headers[cellIndex] && headers[cellIndex].headerText) || '';
+          let value = cell.formattedValue;
+          mappedRow.data[fieldName] = value;
+        });
+        return mappedRow
+      });
 
       this.setState({
         rows: rows,
@@ -93,6 +132,9 @@ class AppComponent extends React.Component {
         isLoading: false
       })
 
+      this.selection = new IndexBasedGridSelection(this.state.rows.length, this.state.headers.length);
+      this.selection.SelectionBehavior = SelectionBehavior.SelectCell;
+
       this.forceUpdate()
     })
 
@@ -100,6 +142,11 @@ class AppComponent extends React.Component {
     //   this.setState({ isLoading: true });
     //   this.loadSelectedData();
     // });
+  }
+
+  handleSelectionEvent = (event) => {
+    const result = this.selection && this.selection.handleSelectionEvent(event);
+    return result;
   }
 
   onHeaderClicked (fieldName) {
@@ -127,7 +174,14 @@ class AppComponent extends React.Component {
     });
   }
 
-  render () {
+  handleCopy = (event, data, target) => {
+    const cellRanges = this.selection.selection.cellRanges;
+    const {headers, rows} = this.state;
+
+    CopySelectionToClipboard(cellRanges, headers, rows);
+  }
+
+  render = () => {
     if (this.state.isLoading) {
       return (<LoadingIndicatorComponent msg='Loading' />);
     }
@@ -139,13 +193,25 @@ class AppComponent extends React.Component {
             <Modal.Title>Choose a Data Source</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <DatasourceListComponent datasourceNames={this.state.datasourceNames} onSelectDatasource={this.onSelectDatasource.bind(this)} />
+            <DatasourceListComponent datasourceNames={this.state.datasourceNames} onSelectDatasource={this.onSelectDatasource} />
           </Modal.Body>
         </Modal>);
     }
 
+    const gridProps = {
+      cols: this.state.headers,
+      rowStore: this.getRowStore(),
+      onSelectionEvent: this.handleSelectionEvent,
+      selectionModel: this.selection,
+      showHeaders: true,
+      showRowBanding: true,
+      showRowHeaders: true,
+      showVerticalGridLines: true
+    };
+
     const mainContent = this.state.rows.length > 0
-      ? (<DataTableComponent rows={this.state.rows} headers={this.state.headers} dataKey={this.state.dataKey} onHeaderClicked={this.onHeaderClicked.bind(this)} />)
+      // ? (<DataTableComponent rows={this.state.rows} headers={this.state.headers} dataKey={this.state.dataKey} onHeaderClicked={this.onHeaderClicked.bind(this)} />)
+      ? (<DataGrid.element {...gridProps} />)
       : (<h4>No data found</h4>);
 
     return (
@@ -157,7 +223,14 @@ class AppComponent extends React.Component {
             <Button bsStyle='link' onClick={this.onResetFilters.bind(this)} disabled={this.state.filteredFields.length === 0}><Glyphicon glyph='repeat' /></Button>
           </h4>
         </div>
-        {mainContent}
+        {/* holdToDisplay needs to be set here to allow click events to propogate */}
+        <ContextMenuTrigger id='copyMenu' holdToDisplay={-1}>
+          {mainContent}
+        </ContextMenuTrigger>
+
+        <ContextMenu id='copyMenu'>
+          <MenuItem onClick={this.handleCopy}>Copy</MenuItem>
+        </ContextMenu>
       </div>
     );
   }
