@@ -5,7 +5,9 @@ import { DataGrid, IndexBasedGridSelection, SelectionBehavior } from '@tableau/w
 
 import LoadingIndicatorComponent from './LoadingIndicatorComponent';
 import DatasourceListComponent from './DatasourceListComponent';
+import { CopySelectionToClipboard } from './SelectionCopy';
 import { CellFormatterFactory } from './CellFormatter';
+import ContextMenuTrigger from 'react-contextmenu/modules/ContextMenuTrigger';
 
 require('normalize.css/normalize.css');
 require('styles/App.scss');
@@ -172,8 +174,11 @@ class AppComponent extends React.Component {
     });
   }
 
-  handleCopy (event, data, target) {
-    console.log('handleCopy', event, data, target);
+  handleCopy = (event, data, target) => {
+    const cellRanges = this.selection.selection.cellRanges;
+    const {headers, rows} = this.state;
+
+    CopySelectionToClipboard(cellRanges, headers, rows);
   }
 
   render = () => {
@@ -218,7 +223,11 @@ class AppComponent extends React.Component {
             <Button bsStyle='link' onClick={this.onResetFilters.bind(this)} disabled={this.state.filteredFields.length === 0}><Glyphicon glyph='repeat' /></Button>
           </h4>
         </div>
-        {mainContent}
+        {/* holdToDisplay needs to be set here to allow click events to propogate */}
+        <ContextMenuTrigger id='copyMenu' holdToDisplay={-1}>
+          {mainContent}
+        </ContextMenuTrigger>
+
         <ContextMenu id='copyMenu'>
           <MenuItem onClick={this.handleCopy}>Copy</MenuItem>
         </ContextMenu>

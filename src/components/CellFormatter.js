@@ -1,5 +1,4 @@
 import * as React from 'react';
-import ContextMenuTrigger from 'react-contextmenu/modules/ContextMenuTrigger';
 
 class CellFormatter extends React.PureComponent {
   getClickData(props) {
@@ -7,7 +6,7 @@ class CellFormatter extends React.PureComponent {
   }
 
   render() {
-    let content = React.createElement(
+    return React.createElement(
       'div', {
         style: {
           userSelect: 'none',
@@ -21,12 +20,6 @@ class CellFormatter extends React.PureComponent {
         title: this.props.value
       },
       this.props.value);
-
-      return (
-        <ContextMenuTrigger id='copyMenu' collect={this.getClickData} originalProps={this.props}>
-          {content}
-        </ContextMenuTrigger>
-      );
   }
 }
 
