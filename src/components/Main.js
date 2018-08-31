@@ -4,6 +4,7 @@ import { Button, Glyphicon, Modal } from 'react-bootstrap';
 import { DataGrid, IndexBasedGridSelection, SelectionBehavior } from '@tableau/widgets-datagrid';
 
 import LoadingIndicatorComponent from './LoadingIndicatorComponent';
+import ColumnListComponent from './ColumnListComponent';
 import DatasourceListComponent from './DatasourceListComponent';
 import { CopySelectionToClipboard } from './SelectionCopy';
 import { CellFormatterFactory } from './CellFormatter';
@@ -23,6 +24,7 @@ class AppComponent extends React.Component {
   constructor (props) {
     super(props);
     this.state = {
+      isFiltering: false,
       isLoading: true,
       datasourceNames: [],
       rows: [],
@@ -102,12 +104,14 @@ class AppComponent extends React.Component {
     const datasource = this.dashboardDataSources[this.state.selectedDatasource];
     datasource.getUnderlyingDataAsync().then(returnedData => {
 
-      const headers = returnedData.columns.map(column => {
+      const headers = returnedData.columns.map((column, index) => {
         return {
+          id: index,
           headerText: column.fieldName,
           dataKey: column.fieldName,
           name: column.fieldName,
-          cellFormatter: CellFormatterFactory
+          cellFormatter: CellFormatterFactory,
+          isVisible: true
         }
       });
 
@@ -132,6 +136,7 @@ class AppComponent extends React.Component {
         isLoading: false
       })
 
+      // TODO get length of non-filtered headers
       this.selection = new IndexBasedGridSelection(this.state.rows.length, this.state.headers.length);
       this.selection.SelectionBehavior = SelectionBehavior.SelectCell;
 
@@ -163,6 +168,13 @@ class AppComponent extends React.Component {
       updatedFilteredFields.push(fieldName);
       this.setState({ filteredFields: updatedFilteredFields, isLoading: false });
     });
+  }
+
+  onColumnToggled = (index) => {
+    let headers = this.state.headers.concat();
+    headers[index].isVisible = !headers[index].isVisible;
+
+    this.setState({headers: headers});
   }
 
   onResetFilters () {
@@ -198,6 +210,19 @@ class AppComponent extends React.Component {
         </Modal>);
     }
 
+    if (this.state.isFiltering) {
+      return (
+        <Modal show={true}>
+          <Modal.Header>
+            <Modal.Title>Select Columns to Display</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <ColumnListComponent headers={this.state.headers} onColumnToggled={this.onColumnToggled}></ColumnListComponent>
+          </Modal.Body>
+        </Modal>
+      );
+    }
+
     const gridProps = {
       cols: this.state.headers,
       rowStore: this.getRowStore(),
@@ -210,7 +235,6 @@ class AppComponent extends React.Component {
     };
 
     const mainContent = this.state.rows.length > 0
-      // ? (<DataTableComponent rows={this.state.rows} headers={this.state.headers} dataKey={this.state.dataKey} onHeaderClicked={this.onHeaderClicked.bind(this)} />)
       ? (<DataGrid.element {...gridProps} />)
       : (<h4>No data found</h4>);
 
@@ -220,7 +244,7 @@ class AppComponent extends React.Component {
           <h4>
           Data for <span className='sheet_name'>{this.state.selectedDatasource}</span>
             <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='th-list' /></Button>
-            <Button bsStyle='link' onClick={this.onResetFilters.bind(this)}><Glyphicon glyph='filter' /></Button>
+            <Button bsStyle='link' onClick={() => this.setState({isFiltering: true})}><Glyphicon glyph='filter' /></Button>
           </h4>
         </div>
         {/* holdToDisplay needs to be set here to allow click events to propogate */}
