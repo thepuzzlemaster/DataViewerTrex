@@ -219,8 +219,8 @@ class AppComponent extends React.Component {
         <div className='summary_header'>
           <h4>
           Data for <span className='sheet_name'>{this.state.selectedDatasource}</span>
-            <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='cog' /></Button>
-            <Button bsStyle='link' onClick={this.onResetFilters.bind(this)} disabled={this.state.filteredFields.length === 0}><Glyphicon glyph='repeat' /></Button>
+            <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='th-list' /></Button>
+            <Button bsStyle='link' onClick={this.onResetFilters.bind(this)}><Glyphicon glyph='filter' /></Button>
           </h4>
         </div>
         {/* holdToDisplay needs to be set here to allow click events to propogate */}
