@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Button, Glyphicon, Modal } from 'react-bootstrap';
 
 import DataTableComponent from './DataTableComponent';
@@ -16,7 +16,7 @@ class AppComponent extends React.Component {
     super(props);
     this.state = {
       isLoading: true,
-      datasourceNames: [],
+      worksheetNames: [],
       rows: [],
       headers: [],
       dataKey: 1,
@@ -24,53 +24,44 @@ class AppComponent extends React.Component {
     };
 
     this.unregisterEventFn = undefined;
-    this.dataSourceFetchPromises = [];
-    this.dashboardDataSources = {};
+    this.dashboardWorksheets = {};
   }
 
   componentWillMount () {
-    tableau.extensions.initializeAsync().then(() => {
-      const selectedDatasource = tableau.extensions.settings.get('datasource');
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-      const datasourceSelected = !!selectedDatasource;
-      let dataSourceNames = [];
-      this.setState({
-        isLoading: datasourceSelected,
-        selectedDatasource: selectedDatasource
-      });
-
-      dashboard.worksheets.forEach(worksheet => {
-        this.dataSourceFetchPromises.push(worksheet.getDataSourcesAsync());
-      });
-
-      Promise.all(this.dataSourceFetchPromises).then(fetchResults => {
-        fetchResults.forEach(dataSourcesForWorksheet => {
-          dataSourcesForWorksheet.forEach(dataSource => {
-            if (!this.dashboardDataSources[dataSource.name]) { // only add if not already there
-              this.dashboardDataSources[dataSource.name] = dataSource;
-              dataSourceNames.push(dataSource.name);
-            }
+      tableau.extensions.initializeAsync().then(() => {
+          const selectedWorksheet = tableau.extensions.settings.get('worksheet');
+          const dashboard = tableau.extensions.dashboardContent.dashboard;
+          const worksheetSelected = !!selectedWorksheet;
+          let worksheetNames = [];
+          this.setState({
+              isLoading: worksheetSelected,
+              selectedWorksheet: selectedWorksheet
           });
-        });
 
-        this.setState({
-          isLoading: false,
-          datasourceNames: dataSourceNames
-        });
+          dashboard.worksheets.forEach(worksheet => {
+              if (!this.dashboardWorksheets[worksheet.name]) { // only add if not already there
+                  this.dashboardWorksheets[worksheet.name] = worksheet;
+                  worksheetNames.push(worksheet.name);
+              }
+          });
+
+          this.setState({
+              isLoading: false,
+              worksheetNames: worksheetNames
+          });
       });
-    });
   }
 
   getSelectedSheet (selectedSheet) {
-    const sheetName = selectedSheet || this.state.selectedDatasource;
+    const sheetName = selectedSheet || this.state.selectedWorksheet;
     return tableau.extensions.dashboardContent.dashboard.worksheets.find(worksheet => worksheet.name === sheetName);
   }
 
-  onSelectDatasource (datasourceName) {
-    tableau.extensions.settings.set('datasource', datasourceName);
+  onSelectWorksheet (worksheetName) {
+    tableau.extensions.settings.set('worksheet', worksheetName);
     this.setState({ isLoading: true });
     tableau.extensions.settings.saveAsync().then(() => {
-      this.setState({ selectedDatasource: datasourceName, filteredFields: [] }, this.loadSelectedData.bind(this));
+      this.setState({ selectedWorksheet: worksheetName, filteredFields: [] }, this.loadSelectedData.bind(this));
     });
   }
 
@@ -79,8 +70,8 @@ class AppComponent extends React.Component {
       this.unregisterEventFn();
     }
 
-    const datasource = this.dashboardDataSources[this.state.selectedDatasource];
-    datasource.getUnderlyingDataAsync().then(returnedData => {
+    const worksheet = this.dashboardWorksheets[this.state.selectedWorksheet];
+    worksheet.getSummaryDataAsync().then(returnedData => {
 
       console.log(returnedData, 'DATA')
       const rows = returnedData.data.map(row => row.map(cell => cell.formattedValue));
@@ -132,14 +123,14 @@ class AppComponent extends React.Component {
       return (<LoadingIndicatorComponent msg='Loading' />);
     }
 
-    if (!this.state.selectedDatasource) {
+    if (!this.state.selectedWorksheet) {
       return (
         <Modal show={true}>
           <Modal.Header>
-            <Modal.Title>Choose a Data Source</Modal.Title>
+            <Modal.Title>Choose a Worksheet</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <DatasourceListComponent datasourceNames={this.state.datasourceNames} onSelectDatasource={this.onSelectDatasource.bind(this)} />
+            <DatasourceListComponent worksheetNames={this.state.worksheetNames} onSelectWorksheet={this.onSelectWorksheet.bind(this)} />
           </Modal.Body>
         </Modal>);
     }
@@ -152,8 +143,8 @@ class AppComponent extends React.Component {
       <div>
         <div className='summary_header'>
           <h4>
-          Data for <span className='sheet_name'>{this.state.selectedDatasource}</span>
-            <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='cog' /></Button>
+          Data for <span className='sheet_name'>{this.state.selectedWorksheet}</span>
+            <Button bsStyle='link' onClick={() => this.setState({ selectedWorksheet: undefined })}><Glyphicon glyph='cog' /></Button>
             <Button bsStyle='link' onClick={this.onResetFilters.bind(this)} disabled={this.state.filteredFields.length === 0}><Glyphicon glyph='repeat' /></Button>
           </h4>
         </div>
