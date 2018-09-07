@@ -85,11 +85,6 @@ class AppComponent extends React.Component {
     })
   }
 
-  getSelectedSheet (selectedSheet) {
-    const sheetName = selectedSheet || this.state.selectedDatasource
-    return tableau.extensions.dashboardContent.dashboard.worksheets.find(worksheet => worksheet.name === sheetName)
-  }
-
   onSelectDatasource = (datasourceName) => {
     tableau.extensions.settings.set('datasource', datasourceName)
     this.setState({ isLoading: true })
@@ -156,22 +151,6 @@ class AppComponent extends React.Component {
     return result
   }
 
-  onHeaderClicked (fieldName) {
-    const headerIndex = this.state.headers.indexOf(fieldName)
-    const columnData = this.state.rows.map(row => row[headerIndex])
-    const columnDomain = columnData.filter((value, index, self) => {
-      return self.indexOf(value) === index
-    })
-
-    const worksheet = this.getSelectedSheet()
-    this.setState({ isLoading: true })
-    worksheet.applyFilterAsync(fieldName, columnDomain, tableau.FilterUpdateType.Replace).then(() => {
-      const updatedFilteredFields = this.state.filteredFields
-      updatedFilteredFields.push(fieldName)
-      this.setState({ filteredFields: updatedFilteredFields, isLoading: false })
-    })
-  }
-
   onColumnToggled = (index) => {
     let headersCopy = this.state.headersCopy.slice()
     headersCopy[index].isVisible = !headersCopy[index].isVisible
@@ -187,15 +166,6 @@ class AppComponent extends React.Component {
     this.setState({
       isFiltering: false,
       headers: CreateCollectionClone(this.state.headersCopy)
-    })
-  }
-
-  onResetFilters () {
-    const worksheet = this.getSelectedSheet()
-    this.setState({ isLoading: true })
-    const promises = this.state.filteredFields.map(fieldName => worksheet.clearFilterAsync(fieldName))
-    Promise.all(promises).then(() => {
-      this.setState({ filteredFields: [], isLoading: false })
     })
   }
 
