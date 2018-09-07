@@ -241,7 +241,7 @@ class AppComponent extends React.Component {
     }
 
     const gridProps = {
-      cols: this.state.headers,
+      cols: this.state.headers.filter(header => header.isVisible),
       rowStore: this.getRowStore(),
       onSelectionEvent: this.handleSelectionEvent,
       selectionModel: this.selection,
