@@ -7,6 +7,7 @@ import LoadingIndicatorComponent from './LoadingIndicatorComponent';
 import ColumnListComponent from './ColumnListComponent';
 import DatasourceListComponent from './DatasourceListComponent';
 import { CopySelectionToClipboard } from './SelectionCopy';
+import { CreateCollectionClone } from './utils';
 import { CellFormatterFactory } from './CellFormatter';
 import ContextMenuTrigger from 'react-contextmenu/modules/ContextMenuTrigger';
 
@@ -29,6 +30,7 @@ class AppComponent extends React.Component {
       datasourceNames: [],
       rows: [],
       headers: [],
+      headersCopy: [],
       dataKey: 1,
       filteredFields: []
     };
@@ -125,9 +127,9 @@ class AppComponent extends React.Component {
           let fieldName = (headers[cellIndex] && headers[cellIndex].headerText) || '';
           let value = cell.formattedValue;
           mappedRow.data[fieldName] = value;
-        });
+        })
         return mappedRow
-      });
+      })
 
       this.setState({
         rows: rows,
@@ -137,8 +139,8 @@ class AppComponent extends React.Component {
       })
 
       // TODO get length of non-filtered headers
-      this.selection = new IndexBasedGridSelection(this.state.rows.length, this.state.headers.length);
-      this.selection.SelectionBehavior = SelectionBehavior.SelectCell;
+      this.selection = new IndexBasedGridSelection(this.state.rows.length, this.state.headers.length)
+      this.selection.SelectionBehavior = SelectionBehavior.SelectCell
 
       this.forceUpdate()
     })
@@ -150,31 +152,42 @@ class AppComponent extends React.Component {
   }
 
   handleSelectionEvent = (event) => {
-    const result = this.selection && this.selection.handleSelectionEvent(event);
-    return result;
+    const result = this.selection && this.selection.handleSelectionEvent(event)
+    return result
   }
 
   onHeaderClicked (fieldName) {
-    const headerIndex = this.state.headers.indexOf(fieldName);
-    const columnData = this.state.rows.map(row => row[headerIndex]);
+    const headerIndex = this.state.headers.indexOf(fieldName)
+    const columnData = this.state.rows.map(row => row[headerIndex])
     const columnDomain = columnData.filter((value, index, self) => {
-      return self.indexOf(value) === index;
-    });
+      return self.indexOf(value) === index
+    })
 
-    const worksheet = this.getSelectedSheet();
-    this.setState({ isLoading: true });
+    const worksheet = this.getSelectedSheet()
+    this.setState({ isLoading: true })
     worksheet.applyFilterAsync(fieldName, columnDomain, tableau.FilterUpdateType.Replace).then(() => {
-      const updatedFilteredFields = this.state.filteredFields;
-      updatedFilteredFields.push(fieldName);
-      this.setState({ filteredFields: updatedFilteredFields, isLoading: false });
-    });
+      const updatedFilteredFields = this.state.filteredFields
+      updatedFilteredFields.push(fieldName)
+      this.setState({ filteredFields: updatedFilteredFields, isLoading: false })
+    })
   }
 
   onColumnToggled = (index) => {
-    let headers = this.state.headers.concat();
-    headers[index].isVisible = !headers[index].isVisible;
+    let headersCopy = this.state.headersCopy.slice()
+    headersCopy[index].isVisible = !headersCopy[index].isVisible
 
-    this.setState({headers: headers});
+    this.setState({headersCopy: headersCopy})
+  }
+
+  cancelFiltering = () => {
+    this.setState({isFiltering: false})
+  }
+
+  saveFiltering = () => {
+    this.setState({
+      isFiltering: false,
+      headers: CreateCollectionClone(this.state.headersCopy)
+    })
   }
 
   onResetFilters () {
@@ -186,7 +199,7 @@ class AppComponent extends React.Component {
     });
   }
 
-  handleCopy = (event, data, target) => {
+  handleCopy = () => {
     const cellRanges = this.selection.selection.cellRanges;
     const {headers, rows} = this.state;
 
@@ -212,13 +225,17 @@ class AppComponent extends React.Component {
 
     if (this.state.isFiltering) {
       return (
-        <Modal show={true}>
-          <Modal.Header>
+        <Modal show={true} onHide={this.cancelFiltering}>
+          <Modal.Header closeButton={true}>
             <Modal.Title>Select Columns to Display</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <ColumnListComponent headers={this.state.headers} onColumnToggled={this.onColumnToggled}></ColumnListComponent>
+            <ColumnListComponent headersCopy={this.state.headersCopy} onColumnToggled={this.onColumnToggled}></ColumnListComponent>
           </Modal.Body>
+          <Modal.Footer>
+            <Button onClick={this.cancelFiltering}>Cancel</Button>
+            <Button onClick={this.saveFiltering} bsStyle="primary">Save Changes</Button>
+          </Modal.Footer>
         </Modal>
       );
     }
@@ -244,7 +261,7 @@ class AppComponent extends React.Component {
           <h4>
           Data for <span className='sheet_name'>{this.state.selectedDatasource}</span>
             <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='th-list' /></Button>
-            <Button bsStyle='link' onClick={() => this.setState({isFiltering: true})}><Glyphicon glyph='filter' /></Button>
+            <Button bsStyle='link' onClick={() => this.setState({ isFiltering: true, headersCopy: CreateCollectionClone(this.state.headers) })}><Glyphicon glyph='filter' /></Button>
           </h4>
         </div>
         {/* holdToDisplay needs to be set here to allow click events to propogate */}

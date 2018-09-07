@@ -1,18 +1,18 @@
-'use strict';
+'use strict'
 
-import React from 'react';
-import PropTypes from 'prop-types';
-import { Checkbox } from 'react-bootstrap';
+import React from 'react'
+import PropTypes from 'prop-types'
+import { Checkbox } from 'react-bootstrap'
 
-require('styles//DataTable.css');
+require('styles//DataTable.css')
 
 class ColumnListComponent extends React.Component {
   RenderColumnsAsChecklist (column) {
     return <Checkbox checked={column.isVisible} key={column.dataKey} onChange={() => this.props.onColumnToggled(column.id)}>{column.name}</Checkbox>
-  };
+  }
 
   render () {
-    const columnsAsChecklist = this.props.headers.map((column) => this.RenderColumnsAsChecklist(column));
+    const columnsAsChecklist = this.props.headersCopy.map((column) => this.RenderColumnsAsChecklist(column))
 
     return (
       <form>
@@ -22,10 +22,10 @@ class ColumnListComponent extends React.Component {
   }
 }
 
-ColumnListComponent.displayName = 'ColumnListComponent';
+ColumnListComponent.displayName = 'ColumnListComponent'
 
 ColumnListComponent.propTypes = {
-  headers: PropTypes.array.isRequired
-};
+  headersCopy: PropTypes.array.isRequired
+}
 
-export default ColumnListComponent;
+export default ColumnListComponent

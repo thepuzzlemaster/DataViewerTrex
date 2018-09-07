@@ -35,6 +35,6 @@ export function CopySelectionToClipboard(cellRanges, cols, rows) {
   try {
     document.execCommand('copy');
   } catch (error) {
-    console.log('could not copy text');
+    // console.log('could not copy text');
   }
 }
