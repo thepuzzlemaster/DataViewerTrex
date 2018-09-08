@@ -33,9 +33,7 @@ class AppComponent extends React.Component {
       datasourceNames: [],
       rows: [],
       headers: [],
-      headersCopy: [],
-      filteredFields: [],
-      activeTabIndex: 0
+      headersCopy: []
     }
 
     this.dataSourceFetchPromises = []
@@ -55,7 +53,7 @@ class AppComponent extends React.Component {
     tableau.extensions.initializeAsync().then(() => {
       const selectedDatasource = tableau.extensions.settings.get('datasource')
       const selectedWorksheet = tableau.extensions.settings.get('worksheet')
-      const activeTabIndex = tableau.extensions.settings.get('activeTabIndex')
+      const activeTab = tableau.extensions.settings.get('activeTab') || 'datasource'
       const dashboard = tableau.extensions.dashboardContent.dashboard
       const datasourceSelected = !!selectedDatasource
       const worksheetSelected = !!selectedWorksheet
@@ -63,7 +61,7 @@ class AppComponent extends React.Component {
       let worksheetNames = []
       let isLoading = datasourceSelected
 
-      if (activeTabIndex === 1) {
+      if (activeTab === 'worksheet') {
         isLoading = worksheetSelected
       }
 
@@ -96,8 +94,10 @@ class AppComponent extends React.Component {
           worksheetNames: worksheetNames
         })
 
-        if (datasourceSelected) {
+        if (activeTab === 'datasource' && datasourceSelected) {
           this.loadSelectedDataSource()
+        } else if (activeTab === 'worksheet' && worksheetSelected) {
+          this.loadSelectedWorksheet()
         }
       })
     })
@@ -105,7 +105,6 @@ class AppComponent extends React.Component {
 
   onSelectDatasource = (datasourceName) => {
     tableau.extensions.settings.set('datasource', datasourceName)
-    this.setState({ isLoading: true })
     tableau.extensions.settings.saveAsync().then(() => {
       this.setState({ selectedDatasource: datasourceName }, this.loadSelectedDataSource)
     })
@@ -113,7 +112,6 @@ class AppComponent extends React.Component {
 
   onSelectWorksheet = (worksheetName) => {
     tableau.extensions.settings.set('worksheet', worksheetName)
-    this.setState({isLoading: true})
     tableau.extensions.settings.saveAsync().then(() => {
       this.setState({ selectedWorksheet: worksheetName }, this.loadSelectedWorksheet)
     })
@@ -121,6 +119,10 @@ class AppComponent extends React.Component {
 
   loadWorksheetOrDatasource = (type) => {
     let promise;
+
+    tableau.extensions.settings.set('activeTab', type)
+    this.setState({isLoading: true})
+
     if (type === 'worksheet') {
       const worksheet = this.dashboardWorksheets[this.state.selectedWorksheet]
       promise = worksheet.getSummaryDataAsync()
@@ -148,10 +150,14 @@ class AppComponent extends React.Component {
 
   loadSelectedWorksheet = () => {
     this.loadWorksheetOrDatasource('worksheet')
+    tableau.extensions.settings.saveAsync().then(() => {
+    })
   }
 
   loadSelectedDataSource = () => {
     this.loadWorksheetOrDatasource('datasource')
+    tableau.extensions.settings.saveAsync().then(() => {
+    })
   }
 
   generateRowsAndColumns = (returnedData) => {
@@ -273,11 +279,15 @@ class AppComponent extends React.Component {
       ? (<DataGrid.element {...gridProps} />)
       : (<h4>No data found</h4>)
 
+    const dataName = tableau.extensions.settings.get('activeTab') === 'datasource'
+      ? this.state.selectedDatasource
+      : this.state.selectedWorksheet
+
     return (
       <div>
         <div className='summary_header'>
           <h4>
-          Data for <span className='sheet_name'>{this.state.selectedDatasource}</span>
+          Data for <span className='sheet_name'>{dataName}</span>
             <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='hdd' title="Select Datasource" /></Button>
             <Button bsStyle='link' onClick={() => this.setState({ selectedWorksheet: undefined })}><Glyphicon glyph='stats' title="Select Worksheet" /></Button>
             <Button bsStyle='link' onClick={() => this.setState({ isFiltering: true, headersCopy: CreateCollectionClone(this.state.headers) })}><Glyphicon glyph='filter' title="Filter columns" /></Button>
