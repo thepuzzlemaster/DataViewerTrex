@@ -19,6 +19,9 @@ require('styles/Datagrid.scss')
 // Declare this so our linter knows that tableau is a global object
 /* global tableau */
 
+
+// TODO headers -> columns
+
 class AppComponent extends React.Component {
   selection
 
@@ -31,12 +34,12 @@ class AppComponent extends React.Component {
       rows: [],
       headers: [],
       headersCopy: [],
-      dataKey: 1,
-      filteredFields: []
+      filteredFields: [],
+      activeTabIndex: 0
     }
 
-    this.unregisterEventFn = undefined
     this.dataSourceFetchPromises = []
+    this.dashboardWorksheets = {}
     this.dashboardDataSources = {}
   }
 
@@ -51,15 +54,29 @@ class AppComponent extends React.Component {
   componentWillMount = () => {
     tableau.extensions.initializeAsync().then(() => {
       const selectedDatasource = tableau.extensions.settings.get('datasource')
+      const selectedWorksheet = tableau.extensions.settings.get('worksheet')
+      const activeTabIndex = tableau.extensions.settings.get('activeTabIndex')
       const dashboard = tableau.extensions.dashboardContent.dashboard
       const datasourceSelected = !!selectedDatasource
+      const worksheetSelected = !!selectedWorksheet
       let dataSourceNames = []
+      let worksheetNames = []
+      let isLoading = datasourceSelected
+
+      if (activeTabIndex === 1) {
+        isLoading = worksheetSelected
+      }
+
       this.setState({
-        isLoading: datasourceSelected,
-        selectedDatasource: selectedDatasource
+        isLoading: isLoading,
+        selectedDatasource: selectedDatasource,
+        selectedWorksheet: selectedWorksheet
       })
 
       dashboard.worksheets.forEach(worksheet => {
+        this.dashboardWorksheets[worksheet.name] = worksheet
+        worksheetNames.push(worksheet.name)
+
         this.dataSourceFetchPromises.push(worksheet.getDataSourcesAsync())
       })
 
@@ -75,11 +92,12 @@ class AppComponent extends React.Component {
 
         this.setState({
           isLoading: false,
-          datasourceNames: dataSourceNames
+          datasourceNames: dataSourceNames,
+          worksheetNames: worksheetNames
         })
 
         if (datasourceSelected) {
-          this.loadSelectedData()
+          this.loadSelectedDataSource()
         }
       })
     })
@@ -89,47 +107,34 @@ class AppComponent extends React.Component {
     tableau.extensions.settings.set('datasource', datasourceName)
     this.setState({ isLoading: true })
     tableau.extensions.settings.saveAsync().then(() => {
-      this.setState({ selectedDatasource: datasourceName, filteredFields: [] }, this.loadSelectedData)
+      this.setState({ selectedDatasource: datasourceName }, this.loadSelectedDataSource)
     })
   }
 
-  loadSelectedData () {
-    if (this.unregisterEventFn) {
-      this.unregisterEventFn()
+  onSelectWorksheet = (worksheetName) => {
+    tableau.extensions.settings.set('worksheet', worksheetName)
+    this.setState({isLoading: true})
+    tableau.extensions.settings.saveAsync().then(() => {
+      this.setState({ selectedWorksheet: worksheetName }, this.loadSelectedWorksheet)
+    })
+  }
+
+  loadWorksheetOrDatasource = (type) => {
+    let promise;
+    if (type === 'worksheet') {
+      const worksheet = this.dashboardWorksheets[this.state.selectedWorksheet]
+      promise = worksheet.getSummaryDataAsync()
+    } else if (type === 'datasource') {
+      const datasource = this.dashboardDataSources[this.state.selectedDatasource]
+      promise = datasource.getUnderlyingDataAsync()
     }
 
-    const datasource = this.dashboardDataSources[this.state.selectedDatasource]
-    datasource.getUnderlyingDataAsync().then(returnedData => {
-
-      const headers = returnedData.columns.map((column, index) => {
-        return {
-          id: index,
-          headerText: column.fieldName,
-          dataKey: column.fieldName,
-          name: column.fieldName,
-          cellFormatter: CellFormatterFactory,
-          isVisible: true
-        }
-      })
-
-      const rows = returnedData.data.map((row, rowIndex) => {
-        let mappedRow = {
-          data: {},
-          key: rowIndex
-        }
-
-        row.forEach((cell, cellIndex) => {
-          let fieldName = (headers[cellIndex] && headers[cellIndex].headerText) || ''
-          let value = cell.formattedValue
-          mappedRow.data[fieldName] = value
-        })
-        return mappedRow
-      })
+    promise.then(returnedData => {
+      const formattedData = this.generateRowsAndColumns(returnedData)
 
       this.setState({
-        rows: rows,
-        headers: headers,
-        dataKey: Date.now(),
+        rows: formattedData.rows,
+        headers: formattedData.headers,
         isLoading: false
       })
 
@@ -139,11 +144,46 @@ class AppComponent extends React.Component {
 
       this.forceUpdate()
     })
+  }
 
-    // this.unregisterEventFn = dashboard.addEventListener(tableau.TableauEventType.MarkSelectionChanged, () => {
-    //   this.setState({ isLoading: true })
-    //   this.loadSelectedData()
-    // })
+  loadSelectedWorksheet = () => {
+    this.loadWorksheetOrDatasource('worksheet')
+  }
+
+  loadSelectedDataSource = () => {
+    this.loadWorksheetOrDatasource('datasource')
+  }
+
+  generateRowsAndColumns = (returnedData) => {
+    const headers = returnedData.columns.map((column, index) => {
+      return {
+        id: index,
+        headerText: column.fieldName,
+        dataKey: column.fieldName,
+        name: column.fieldName,
+        cellFormatter: CellFormatterFactory,
+        isVisible: true
+      }
+    })
+
+    const rows = returnedData.data.map((row, rowIndex) => {
+      let mappedRow = {
+        data: {},
+        key: rowIndex
+      }
+
+      row.forEach((cell, cellIndex) => {
+        let fieldName = (headers[cellIndex] && headers[cellIndex].headerText) || ''
+        let value = cell.formattedValue
+        mappedRow.data[fieldName] = value
+      })
+      return mappedRow
+    })
+
+    return {
+      headers: headers,
+      rows: rows
+    }
   }
 
   handleSelectionEvent = (event) => {
@@ -174,6 +214,18 @@ class AppComponent extends React.Component {
     const {headers, rows} = this.state
 
     CopySelectionToClipboard(cellRanges, headers, rows)
+  }
+
+  renderWorksheetSelector = () => {
+    return (
+      <Modal show={true}>
+        <Modal.Header>
+          <Modal.Title>Choose a Worksheet</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <DatasourceListComponent datasourceNames={this.state.worksheetNames} onSelectDatasource={this.onSelectWorksheet} />
+        </Modal.Body>
+      </Modal>)
   }
 
   renderDataSourceSelector = () => {
@@ -226,8 +278,9 @@ class AppComponent extends React.Component {
         <div className='summary_header'>
           <h4>
           Data for <span className='sheet_name'>{this.state.selectedDatasource}</span>
-            <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='th-list' /></Button>
-            <Button bsStyle='link' onClick={() => this.setState({ isFiltering: true, headersCopy: CreateCollectionClone(this.state.headers) })}><Glyphicon glyph='filter' /></Button>
+            <Button bsStyle='link' onClick={() => this.setState({ selectedDatasource: undefined })}><Glyphicon glyph='hdd' title="Select Datasource" /></Button>
+            <Button bsStyle='link' onClick={() => this.setState({ selectedWorksheet: undefined })}><Glyphicon glyph='stats' title="Select Worksheet" /></Button>
+            <Button bsStyle='link' onClick={() => this.setState({ isFiltering: true, headersCopy: CreateCollectionClone(this.state.headers) })}><Glyphicon glyph='filter' title="Filter columns" /></Button>
           </h4>
         </div>
         {/* holdToDisplay needs to be set here to allow click events to propogate */}
@@ -245,6 +298,10 @@ class AppComponent extends React.Component {
   render = () => {
     if (this.state.isLoading) {
       return (<LoadingIndicatorComponent msg='Loading' />)
+    }
+
+    if (!this.state.selectedWorksheet) {
+      return this.renderWorksheetSelector()
     }
 
     if (!this.state.selectedDatasource) {
