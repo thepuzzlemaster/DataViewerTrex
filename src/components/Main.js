@@ -31,6 +31,7 @@ class AppComponent extends React.Component {
       isFiltering: false,
       isLoading: true,
       datasourceNames: [],
+      worksheetNames: [],
       rows: [],
       headers: [],
       headersCopy: []

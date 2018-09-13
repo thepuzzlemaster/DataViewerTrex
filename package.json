@@ -17,8 +17,8 @@
     "start": "node server.js --env=dev"
   },
   "repository": "",
-  "keywords": [],
-  "author": "Your name here",
+  "keywords": ["tableau", "data"],
+  "author": "iLan Epstein",
   "devDependencies": {
     "babel-core": "^6.0.0",
     "babel-eslint": "^6.0.0",

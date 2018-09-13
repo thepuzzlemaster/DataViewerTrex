@@ -4,7 +4,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from 'react-bootstrap';
 
-require('styles//DatasourceList.css');
+require('styles/DatasourceList.css');
 
 class DatasourceListComponent extends React.Component {
   makeDatasourceButton (datasourceName) {
